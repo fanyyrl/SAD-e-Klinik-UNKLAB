@@ -1,0 +1,308 @@
+{% extends 'base.html' %}
+
+{% block title %}L-07 Keluhan dan Tanda Vital{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+        <div>
+            <div class="text-xs font-bold uppercase tracking-wider text-teal-700 mb-1">
+                <i class="fa-solid fa-heart-pulse mr-1"></i> Pemeriksaan Fisik Awal
+            </div>
+            <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">L-07 Keluhan dan Tanda Vital</h1>
+            <p class="text-xs text-slate-500 mt-1">
+                Pencatatan keluhan dan tanda vital pasien untuk Antrean <strong class="text-slate-800">#{{ kunjungan.nomor_antrian }}</strong> ({{ kunjungan.id_pasien.nama }}).
+            </p>
+        </div>
+        <a href="{% url 'antrean' %}" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition">
+            <i class="fa-solid fa-arrow-left mr-1"></i> Antrean
+        </a>
+    </div>
+
+    <!-- Patient Header Card -->
+    <div class="bg-slate-900 text-white p-5 rounded-2xl shadow-sm flex items-center justify-between">
+        <div>
+            <div class="text-xs font-mono font-bold text-teal-400">NIM: {{ kunjungan.id_pasien.nim_id }}</div>
+            <div class="text-lg font-bold text-white">{{ kunjungan.id_pasien.nama }}</div>
+            <div class="text-xs text-slate-300">{{ kunjungan.id_pasien.umur }} tahun • {{ kunjungan.id_pasien.get_jenis_kelamin_display }} • {{ kunjungan.id_pasien.fakultas|default:"UNKLAB" }}</div>
+        </div>
+        <div class="text-right">
+            <div class="text-[10px] uppercase font-bold text-slate-400">Nomor Antrean</div>
+            <div class="text-3xl font-extrabold font-mono text-teal-300">#{{ kunjungan.nomor_antrian }}</div>
+        </div>
+    </div>
+
+    <!-- Abnormal Warning Box (Dynamic via JS) -->
+    <div id="abnormal-alert-box" class="hidden p-5 rounded-2xl bg-red-50 border-2 border-red-500 text-red-900 transition-all shadow-md">
+        <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center flex-shrink-0 text-xl font-bold animate-bounce">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div class="space-y-1">
+                <h3 class="font-extrabold text-sm text-red-800 uppercase tracking-wide">
+                    PERINGATAN KESELAMATAN: Tanda Vital Abnormal Terdeteksi!
+                </h3>
+                <p class="text-xs text-red-700">
+                    Sistem mendeteksi nilai parameter berada di luar batas rentang normal dewasa:
+                </p>
+                <ul id="abnormal-params-list" class="list-disc list-inside text-xs font-bold text-red-900 space-y-0.5 pt-1"></ul>
+                <p class="text-[11px] text-red-800 font-medium pt-1">
+                    *Kunjungan ini akan otomatis diberi tanda <strong>PRIORITAS TTV ABNORMAL</strong> untuk dokter. Harap isi catatan eskalasi di bawah.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reference Batas Normal Pill Bar -->
+    <div class="bg-slate-100/80 p-3.5 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">
+        <div class="font-bold text-[11px] uppercase tracking-wider text-slate-500">
+            <i class="fa-solid fa-circle-info text-teal-600 mr-1"></i> Standar Nilai Rujukan Normal Dewasa UNKLAB:
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 text-[11px]">
+            <div>• Sistolik: 90 - 139 mmHg</div>
+            <div>• Diastolik: 60 - 89 mmHg</div>
+            <div>• Nadi: 60 - 100 x/menit</div>
+            <div>• Suhu Tubuh: 36.0 - 37.5 °C</div>
+            <div>• Respirasi: 12 - 20 x/menit</div>
+            <div>• SpO2: 95 - 100 %</div>
+        </div>
+    </div>
+
+    <!-- Form Body -->
+    <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-sm">
+        <form method="POST" id="ttv-form" class="space-y-6">
+            {% csrf_token %}
+
+            <!-- Keluhan Utama -->
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Keluhan Utama <span class="text-red-500 font-bold">*</span>
+                </label>
+                <textarea name="keluhan_utama" rows="3" required
+                          class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 text-sm"
+                          placeholder="Keluhan utama yang dirasakan pasien...">{{ kunjungan.keluhan_utama }}</textarea>
+                <span class="text-[11px] text-slate-400 mt-1 block">*Disimpan dengan enkripsi field medis Fernet (SR-02).</span>
+            </div>
+
+            <div class="border-t border-slate-100 pt-5">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-teal-800 mb-4 flex items-center gap-1.5">
+                    <i class="fa-solid fa-stethoscope"></i> Parameter Tanda Vital
+                </h3>
+
+                <!-- Grid TTV Inputs -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Tekanan Sistolik -->
+                    <div id="field-sistolik" class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                            Tekanan Sistolik <span class="text-red-500">*</span>
+                        </label>
+                        <div class="flex items-center gap-2">
+                            {{ form.tekanan_sistolik }}
+                            <span class="text-xs text-slate-500 font-semibold">mmHg</span>
+                        </div>
+                        <span class="text-[10px] text-slate-400 mt-0.5 block">Normal: 90 - 139 mmHg</span>
+                        {% if form.tekanan_sistolik.errors %}
+                        <div class="text-red-600 text-xs mt-1 font-medium">{{ form.tekanan_sistolik.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Tekanan Diastolik -->
+                    <div id="field-diastolik" class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                            Tekanan Diastolik <span class="text-red-500">*</span>
+                        </label>
+                        <div class="flex items-center gap-2">
+                            {{ form.tekanan_diastolik }}
+                            <span class="text-xs text-slate-500 font-semibold">mmHg</span>
+                        </div>
+                        <span class="text-[10px] text-slate-400 mt-0.5 block">Normal: 60 - 89 mmHg</span>
+                        {% if form.tekanan_diastolik.errors %}
+                        <div class="text-red-600 text-xs mt-1 font-medium">{{ form.tekanan_diastolik.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Nadi -->
+                    <div id="field-nadi" class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                            Denyut Nadi <span class="text-red-500">*</span>
+                        </label>
+                        <div class="flex items-center gap-2">
+                            {{ form.nadi }}
+                            <span class="text-xs text-slate-500 font-semibold">x/menit</span>
+                        </div>
+                        <span class="text-[10px] text-slate-400 mt-0.5 block">Normal: 60 - 100 x/menit</span>
+                        {% if form.nadi.errors %}
+                        <div class="text-red-600 text-xs mt-1 font-medium">{{ form.nadi.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Suhu Tubuh -->
+                    <div id="field-suhu" class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                            Suhu Tubuh <span class="text-red-500">*</span>
+                        </label>
+                        <div class="flex items-center gap-2">
+                            {{ form.suhu_tubuh }}
+                            <span class="text-xs text-slate-500 font-semibold">°C</span>
+                        </div>
+                        <span class="text-[10px] text-slate-400 mt-0.5 block">Normal: 36.0 - 37.5 °C</span>
+                        {% if form.suhu_tubuh.errors %}
+                        <div class="text-red-600 text-xs mt-1 font-medium">{{ form.suhu_tubuh.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Respirasi -->
+                    <div id="field-respirasi" class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                            Laju Respirasi <span class="text-red-500">*</span>
+                        </label>
+                        <div class="flex items-center gap-2">
+                            {{ form.respirasi }}
+                            <span class="text-xs text-slate-500 font-semibold">x/menit</span>
+                        </div>
+                        <span class="text-[10px] text-slate-400 mt-0.5 block">Normal: 12 - 20 x/menit</span>
+                        {% if form.respirasi.errors %}
+                        <div class="text-red-600 text-xs mt-1 font-medium">{{ form.respirasi.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Saturasi Oksigen (SpO2) -->
+                    <div id="field-spo2" class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                            Saturasi Oksigen (SpO2) <span class="text-red-500">*</span>
+                        </label>
+                        <div class="flex items-center gap-2">
+                            {{ form.saturasi_oksigen }}
+                            <span class="text-xs text-slate-500 font-semibold">%</span>
+                        </div>
+                        <span class="text-[10px] text-slate-400 mt-0.5 block">Normal: 95 - 100 %</span>
+                        {% if form.saturasi_oksigen.errors %}
+                        <div class="text-red-600 text-xs mt-1 font-medium">{{ form.saturasi_oksigen.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Skor Nyeri -->
+                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                            Skor Nyeri (0 - 10)
+                        </label>
+                        {{ form.skor_nyeri }}
+                        <span class="text-[10px] text-slate-400 mt-0.5 block">0: Tidak nyeri, 10: Nyeri hebat</span>
+                    </div>
+
+                    <!-- Berat Badan -->
+                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                            Berat Badan
+                        </label>
+                        <div class="flex items-center gap-2">
+                            {{ form.berat_badan }}
+                            <span class="text-xs text-slate-500 font-semibold">kg</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Catatan Eskalasi -->
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 flex items-center justify-between">
+                    <span>Catatan Eskalasi Kasus Khusus</span>
+                    <span class="text-[10px] text-amber-600 font-semibold">*Wajib diisi jika TTV abnormal</span>
+                </label>
+                {{ form.catatan_eskalasi }}
+                <span class="text-[11px] text-slate-400 mt-1 block">
+                    Instruksi atau catatan pengawasan khusus untuk dokter pemeriksa.
+                </span>
+            </div>
+
+            <!-- Action Buttons: Simpan & Batal -->
+            <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+                <a href="{% url 'antrean' %}" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition">
+                    Batal
+                </a>
+                <button type="submit" class="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs shadow-md shadow-teal-600/20 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-check"></i> Simpan Tanda Vital & Siapkan untuk Dokter
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Realtime TTV abnormal detection in client side
+    const normalLimits = {
+        sistolik: [90, 139],
+        diastolik: [60, 89],
+        nadi: [60, 100],
+        suhu: [36.0, 37.5],
+        respirasi: [12, 20],
+        spo2: [95, 100]
+    };
+
+    const inputs = {
+        sistolik: document.getElementById('id_tekanan_sistolik'),
+        diastolik: document.getElementById('id_tekanan_diastolik'),
+        nadi: document.getElementById('id_nadi'),
+        suhu: document.getElementById('id_suhu_tubuh'),
+        respirasi: document.getElementById('id_respirasi'),
+        spo2: document.getElementById('id_saturasi_oksigen')
+    };
+
+    const containers = {
+        sistolik: document.getElementById('field-sistolik'),
+        diastolik: document.getElementById('field-diastolik'),
+        nadi: document.getElementById('field-nadi'),
+        suhu: document.getElementById('field-suhu'),
+        respirasi: document.getElementById('field-respirasi'),
+        spo2: document.getElementById('field-spo2')
+    };
+
+    function checkTTV() {
+        const abnormalList = [];
+
+        for (const [key, input] of Object.entries(inputs)) {
+            if (!input || !input.value) continue;
+            const val = parseFloat(input.value);
+            const [min, max] = normalLimits[key];
+            const container = containers[key];
+
+            if (val < min || val > max) {
+                abnormalList.push(`${key.toUpperCase()}: ${val} (Normal: ${min}-${max})`);
+                if (container) {
+                    container.classList.add('bg-red-50', 'border-red-400', 'ring-1', 'ring-red-300');
+                    container.classList.remove('bg-slate-50', 'border-slate-200');
+                }
+            } else {
+                if (container) {
+                    container.classList.remove('bg-red-50', 'border-red-400', 'ring-1', 'ring-red-300');
+                    container.classList.add('bg-slate-50', 'border-slate-200');
+                }
+            }
+        }
+
+        const alertBox = document.getElementById('abnormal-alert-box');
+        const listElem = document.getElementById('abnormal-params-list');
+
+        if (abnormalList.length > 0) {
+            alertBox.classList.remove('hidden');
+            listElem.innerHTML = abnormalList.map(item => `<li>${item}</li>`).join('');
+        } else {
+            alertBox.classList.add('hidden');
+            listElem.innerHTML = '';
+        }
+    }
+
+    // Attach listeners
+    Object.values(inputs).forEach(input => {
+        if (input) {
+            input.addEventListener('input', checkTTV);
+        }
+    });
+
+    // Run once on load
+    document.addEventListener('DOMContentLoaded', checkTTV);
+</script>
+{% endblock %}

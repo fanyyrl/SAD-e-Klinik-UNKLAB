@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+
+{% block title %}Verifikasi Pasien - {{ pasien.nama }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+        <div>
+            <div class="text-xs font-bold uppercase tracking-wider text-teal-700 mb-1">
+                <i class="fa-solid fa-id-card mr-1"></i> Verifikasi Identitas
+            </div>
+            <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Detail Verifikasi Pasien</h1>
+            <p class="text-xs text-slate-500 mt-1">Pastikan data identitas fisik/kartu mahasiswa cocok sebelum membuat kunjungan.</p>
+        </div>
+        <a href="{% url 'pasien_verifikasi' %}" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition">
+            <i class="fa-solid fa-arrow-left mr-1"></i> Kembali
+        </a>
+    </div>
+
+    {% if kunjungan_aktif %}
+    <!-- Alert Jika Sudah Punya Kunjungan Aktif Hari Ini -->
+    <div class="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-start gap-3">
+        <i class="fa-solid fa-circle-exclamation text-amber-600 text-lg mt-0.5"></i>
+        <div>
+            <div class="font-bold text-sm">Pasien Sudah Memiliki Antrean Hari Ini!</div>
+            <div class="mt-0.5">
+                Pasien ini terdaftar pada <strong>Nomor Antrean #{{ kunjungan_aktif.nomor_antrian }}</strong> dengan status
+                <span class="font-semibold uppercase">{{ kunjungan_aktif.get_status_antrian_display }}</span>.
+            </div>
+            <div class="mt-2 flex gap-2">
+                <a href="{% url 'ttv_create_or_update' id_kunjungan=kunjungan_aktif.id_kunjungan %}" class="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs transition">
+                    Kelola TTV / Kunjungan Ini
+                </a>
+                <a href="{% url 'antrean' %}" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition">
+                    Lihat Antrean
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Card Profile Pasien -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div class="bg-gradient-to-r from-teal-700 to-sky-700 p-6 text-white flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-2xl font-bold">
+                    {% if pasien.jenis_kelamin == 'L' %}<i class="fa-solid fa-user-tie"></i>{% else %}<i class="fa-solid fa-user"></i>{% endif %}
+                </div>
+                <div>
+                    <div class="text-xs uppercase tracking-wider text-teal-200 font-bold font-mono">NIM / ID: {{ pasien.nim_id }}</div>
+                    <h2 class="text-2xl font-extrabold tracking-tight">{{ pasien.nama }}</h2>
+                    <div class="text-xs text-teal-100 mt-0.5">{{ pasien.fakultas|default:"Civitas Akademika UNKLAB" }}</div>
+                </div>
+            </div>
+            <div class="hidden sm:block text-right">
+                <span class="px-3 py-1 rounded-full text-xs font-bold bg-white/20 backdrop-blur-md">
+                    {{ pasien.umur }} Tahun
+                </span>
+            </div>
+        </div>
+
+        <div class="p-6 space-y-6">
+            <!-- Data Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                    <div class="text-slate-400 uppercase font-bold text-[10px] tracking-wider">Tanggal Lahir</div>
+                    <div class="font-bold text-slate-800 text-sm mt-1">{{ pasien.tanggal_lahir|date:"d F Y" }} ({{ pasien.umur }} tahun)</div>
+                </div>
+
+                <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                    <div class="text-slate-400 uppercase font-bold text-[10px] tracking-wider">Jenis Kelamin</div>
+                    <div class="font-bold text-slate-800 text-sm mt-1">{{ pasien.get_jenis_kelamin_display }}</div>
+                </div>
+
+                <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                    <div class="text-slate-400 uppercase font-bold text-[10px] tracking-wider">Fakultas / Program Studi</div>
+                    <div class="font-bold text-slate-800 text-sm mt-1">{{ pasien.fakultas|default:"-" }}</div>
+                </div>
+
+                <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                    <div class="text-slate-400 uppercase font-bold text-[10px] tracking-wider">Alamat / Asrama UNKLAB</div>
+                    <div class="font-bold text-slate-800 text-sm mt-1">{{ pasien.alamat|default:"-" }}</div>
+                </div>
+            </div>
+
+            <!-- Riwayat Alergi -->
+            <div class="p-4 rounded-xl border {% if pasien.alergi.all %}bg-red-50/60 border-red-200{% else %}bg-slate-50 border-slate-100{% endif %}">
+                <div class="text-xs font-bold uppercase tracking-wider {% if pasien.alergi.all %}text-red-700{% else %}text-slate-500{% endif %} mb-2 flex items-center gap-1.5">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Catatan Alergi Pasien
+                </div>
+                {% if pasien.alergi.all %}
+                <div class="space-y-1.5">
+                    {% for al in pasien.alergi.all %}
+                    <div class="flex items-start gap-2 text-xs">
+                        <span class="px-2 py-0.5 rounded font-bold font-mono text-[10px] bg-red-100 text-red-800 border border-red-200 uppercase">
+                            {{ al.jenis_alergi }}
+                        </span>
+                        <div>
+                            <span class="font-bold text-slate-800">{{ al.nama_alergen }}</span>
+                            <span class="text-slate-600">- Reaksi: {{ al.reaksi }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-xs text-slate-500">Tidak ada riwayat alergi yang tercatat pada pasien ini.</p>
+                {% endif %}
+            </div>
+
+            <!-- Action Buttons: Buat Kunjungan -->
+            <div class="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <a href="{% url 'pasien_update' id_pasien=pasien.id_pasien %}" class="text-xs font-semibold text-slate-600 hover:text-teal-700">
+                    <i class="fa-solid fa-pen-to-square mr-1"></i> Edit Biodata Pasien
+                </a>
+                <div class="flex gap-2 w-full sm:w-auto">
+                    <a href="{% url 'kunjungan_create' id_pasien=pasien.id_pasien %}" class="w-full sm:w-auto px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs shadow-md shadow-teal-600/20 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-clipboard-check text-sm"></i>
+                        <span>Verifikasi Identitas & Buat Kunjungan (L-05)</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

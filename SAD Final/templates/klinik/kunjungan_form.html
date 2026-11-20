@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block title %}L-05 Buat Kunjungan{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+        <div>
+            <div class="text-xs font-bold uppercase tracking-wider text-teal-700 mb-1">
+                <i class="fa-solid fa-ticket mr-1"></i> Pendaftaran Kunjungan
+            </div>
+            <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">L-05 Buat Kunjungan</h1>
+            <p class="text-xs text-slate-500 mt-1">Registrasi kunjungan baru untuk pasien terverifikasi dan penerbitan nomor antrean digital harian.</p>
+        </div>
+        <a href="{% url 'pasien_verifikasi_detail' id_pasien=pasien.id_pasien %}" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition">
+            <i class="fa-solid fa-arrow-left mr-1"></i> Batal
+        </a>
+    </div>
+
+    <!-- Patient Summary Card -->
+    <div class="bg-slate-900 text-white p-6 rounded-2xl shadow-sm space-y-3">
+        <div class="flex items-center justify-between">
+            <div class="text-xs font-bold uppercase tracking-wider text-teal-400 font-mono">
+                NIM / ID: {{ pasien.nim_id }}
+            </div>
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                <i class="fa-solid fa-check-circle mr-1"></i> Terverifikasi
+            </span>
+        </div>
+        <div>
+            <div class="text-xl font-bold">{{ pasien.nama }}</div>
+            <div class="text-xs text-slate-300">{{ pasien.umur }} tahun • {{ pasien.get_jenis_kelamin_display }} • {{ pasien.fakultas|default:"UNKLAB" }}</div>
+        </div>
+
+        {% if pasien.alergi.all %}
+        <div class="pt-2 border-t border-slate-800 flex items-center gap-1.5 flex-wrap">
+            <span class="text-[10px] font-bold text-red-400 uppercase"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Alergi:</span>
+            {% for al in pasien.alergi.all %}
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-950/80 text-red-300 border border-red-800">
+                {{ al.nama_alergen }}
+            </span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Form Buat Kunjungan -->
+    <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-sm">
+        <form method="POST" class="space-y-5">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="p-4 rounded-xl bg-red-50 text-red-700 text-xs font-medium border border-red-200">
+                {{ form.non_field_errors }}
+            </div>
+            {% endif %}
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Keluhan Utama Kedatangan <span class="text-red-500 font-bold">*</span>
+                </label>
+                {{ form.keluhan_utama }}
+                {% if form.keluhan_utama.errors %}
+                <div class="text-red-600 text-xs mt-1 font-medium">{{ form.keluhan_utama.errors.0 }}</div>
+                {% endif %}
+                <span class="text-[11px] text-slate-400 mt-1 block">
+                    *Data keluhan utama dienkripsi di database (SR-02) untuk menjaga kerahasiaan medis pasien.
+                </span>
+            </div>
+
+            <div class="p-4 rounded-xl bg-teal-50 border border-teal-200 text-teal-900 text-xs flex items-start gap-2.5">
+                <i class="fa-solid fa-circle-info text-teal-600 text-base mt-0.5"></i>
+                <div class="leading-relaxed">
+                    Sistem akan otomatis menerbitkan <strong>Nomor Antrean Harian (FIFO)</strong> berikutnya dan mencatat waktu kedatangan saat ini. Setelah menyimpan, Anda akan langsung diarahkan ke form pencatatan Tanda Vital (TTV).
+                </div>
+            </div>
+
+            <!-- Action Buttons: Simpan & Batal -->
+            <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+                <a href="{% url 'pasien_verifikasi_detail' id_pasien=pasien.id_pasien %}" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition">
+                    Batal
+                </a>
+                <button type="submit" class="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs shadow-md shadow-teal-600/20 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-ticket"></i> Buat Kunjungan & Dapatkan Nomor Antrean
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

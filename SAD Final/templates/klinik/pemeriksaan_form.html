@@ -1,0 +1,209 @@
+{% extends 'base.html' %}
+
+{% block title %}L-10 Pemeriksaan{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs font-bold uppercase tracking-wider text-sky-700 mb-1 flex items-center gap-1.5">
+                <i class="fa-solid fa-stethoscope"></i> Pelayanan Medis Dokter
+            </div>
+            <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">L-10 Pemeriksaan</h1>
+            <p class="text-xs text-slate-500 mt-1">
+                Pemeriksaan klinis untuk pasien <strong class="text-slate-800">{{ kunjungan.id_pasien.nama }}</strong> (Antrean #{{ kunjungan.nomor_antrian }}).
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{% url 'riwayat_medis' id_pasien=kunjungan.id_pasien.id_pasien %}" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition flex items-center gap-1">
+                <i class="fa-solid fa-clock-rotate-left"></i> Rekam Medis
+            </a>
+            <a href="{% url 'antrean' %}" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition">
+                <i class="fa-solid fa-list-ol mr-1"></i> Antrean
+            </a>
+        </div>
+    </div>
+
+    <!-- Clinical Workflow Navigation Tabs (If examination exists) -->
+    {% if pemeriksaan_instance %}
+    <div class="flex items-center gap-2 overflow-x-auto pb-1 text-xs font-bold">
+        <a href="{% url 'pemeriksaan_view' id_kunjungan=kunjungan.id_kunjungan %}" class="px-4 py-2.5 rounded-xl bg-teal-600 text-white shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+            <i class="fa-solid fa-stethoscope"></i> L-10 Pemeriksaan
+        </a>
+        <a href="{% url 'diagnosis_view' id_pemeriksaan=pemeriksaan_instance.id_pemeriksaan %}" class="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+            <i class="fa-solid fa-viruses text-sky-600"></i> L-11 Diagnosis ICD-10
+        </a>
+        <a href="{% url 'tindakan_view' id_pemeriksaan=pemeriksaan_instance.id_pemeriksaan %}" class="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+            <i class="fa-solid fa-syringe text-purple-600"></i> L-12 Tindakan Medis
+        </a>
+        <a href="{% url 'resep_view' id_pemeriksaan=pemeriksaan_instance.id_pemeriksaan %}" class="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+            <i class="fa-solid fa-pills text-amber-500"></i> L-13 Resep Digital
+        </a>
+        <a href="{% url 'hasil_lab_view' id_kunjungan=kunjungan.id_kunjungan %}" class="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+            <i class="fa-solid fa-flask text-teal-600"></i> L-14 Hasil Lab
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Patient & TTV Summary Panel -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Patient Identity -->
+        <div class="bg-slate-900 text-white p-6 rounded-2xl shadow-sm space-y-3">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-mono font-bold text-teal-400">NIM: {{ kunjungan.id_pasien.nim_id }}</span>
+                <span class="text-xs font-bold font-mono text-teal-300">Antrean #{{ kunjungan.nomor_antrian }}</span>
+            </div>
+            <div>
+                <h2 class="text-xl font-bold">{{ kunjungan.id_pasien.nama }}</h2>
+                <div class="text-xs text-slate-300">{{ kunjungan.id_pasien.umur }} tahun • {{ kunjungan.id_pasien.get_jenis_kelamin_display }}</div>
+                <div class="text-xs text-slate-400 mt-0.5">{{ kunjungan.id_pasien.fakultas|default:"UNKLAB" }}</div>
+            </div>
+
+            <!-- Allergy Alert (Crucial for safety) -->
+            <div class="pt-3 border-t border-slate-800">
+                <div class="text-[10px] uppercase font-bold text-slate-400 mb-1">Status Alergi:</div>
+                {% if alergi_pasien %}
+                <div class="space-y-1">
+                    {% for al in alergi_pasien %}
+                    <div class="p-2 rounded-lg bg-red-950/80 border border-red-800 text-[11px] text-red-200 flex items-center justify-between">
+                        <span class="font-bold"><i class="fa-solid fa-triangle-exclamation mr-1 text-red-400"></i> {{ al.nama_alergen }}</span>
+                        <span class="text-[9px] uppercase px-1.5 py-0.5 bg-red-900 rounded font-mono">{{ al.jenis_alergi }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-xs text-slate-400">Tidak ada alergi tercatat.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Initial Complaint & TTV (Abnormal Highlighted in Red) -->
+        <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">
+                    <i class="fa-solid fa-heart-pulse text-teal-600 mr-1"></i> Data Tanda Vital Awal (TTV)
+                </h3>
+                {% if ttv.status_abnormal %}
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-100 text-red-800 border border-red-300 animate-pulse">
+                    <i class="fa-solid fa-triangle-exclamation"></i> TTV ABNORMAL
+                </span>
+                {% else %}
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                    TTV Normal
+                </span>
+                {% endif %}
+            </div>
+
+            <div class="text-xs">
+                <span class="text-slate-400 font-bold uppercase text-[10px] block">Keluhan Utama Kedatangan:</span>
+                <p class="text-slate-800 font-medium text-sm mt-0.5 p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                    {{ kunjungan.keluhan_utama }}
+                </p>
+            </div>
+
+            {% if ttv %}
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div class="p-3 rounded-xl border {% if ttv.tekanan_sistolik < 90 or ttv.tekanan_sistolik > 139 or ttv.tekanan_diastolik < 60 or ttv.tekanan_diastolik > 89 %}bg-red-50 border-red-300 text-red-900{% else %}bg-slate-50 border-slate-100{% endif %}">
+                    <div class="text-[10px] uppercase font-bold text-slate-500">Tekanan Darah</div>
+                    <div class="text-base font-extrabold mt-0.5">{{ ttv.tekanan_sistolik }}/{{ ttv.tekanan_diastolik }} <span class="text-[10px] font-normal">mmHg</span></div>
+                </div>
+
+                <div class="p-3 rounded-xl border {% if ttv.nadi < 60 or ttv.nadi > 100 %}bg-red-50 border-red-300 text-red-900{% else %}bg-slate-50 border-slate-100{% endif %}">
+                    <div class="text-[10px] uppercase font-bold text-slate-500">Denyut Nadi</div>
+                    <div class="text-base font-extrabold mt-0.5">{{ ttv.nadi }} <span class="text-[10px] font-normal">x/m</span></div>
+                </div>
+
+                <div class="p-3 rounded-xl border {% if ttv.suhu_tubuh < 36.0 or ttv.suhu_tubuh > 37.5 %}bg-red-50 border-red-300 text-red-900{% else %}bg-slate-50 border-slate-100{% endif %}">
+                    <div class="text-[10px] uppercase font-bold text-slate-500">Suhu Tubuh</div>
+                    <div class="text-base font-extrabold mt-0.5">{{ ttv.suhu_tubuh }} <span class="text-[10px] font-normal">°C</span></div>
+                </div>
+
+                <div class="p-3 rounded-xl border {% if ttv.respirasi < 12 or ttv.respirasi > 20 %}bg-red-50 border-red-300 text-red-900{% else %}bg-slate-50 border-slate-100{% endif %}">
+                    <div class="text-[10px] uppercase font-bold text-slate-500">Respirasi</div>
+                    <div class="text-base font-extrabold mt-0.5">{{ ttv.respirasi }} <span class="text-[10px] font-normal">x/m</span></div>
+                </div>
+
+                <div class="p-3 rounded-xl border {% if ttv.saturasi_oksigen < 95 %}bg-red-50 border-red-300 text-red-900{% else %}bg-slate-50 border-slate-100{% endif %}">
+                    <div class="text-[10px] uppercase font-bold text-slate-500">SpO2</div>
+                    <div class="text-base font-extrabold mt-0.5">{{ ttv.saturasi_oksigen }} <span class="text-[10px] font-normal">%</span></div>
+                </div>
+
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <div class="text-[10px] uppercase font-bold text-slate-500">Skor Nyeri</div>
+                    <div class="text-base font-extrabold mt-0.5">{{ ttv.skor_nyeri|default:"0" }}/10</div>
+                </div>
+
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <div class="text-[10px] uppercase font-bold text-slate-500">Berat Badan</div>
+                    <div class="text-base font-extrabold mt-0.5">{{ ttv.berat_badan|default:"-" }} <span class="text-[10px] font-normal">kg</span></div>
+                </div>
+            </div>
+
+            {% if ttv.catatan_eskalasi %}
+            <div class="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-900">
+                <span class="font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Catatan Eskalasi Staf:</span>
+                {{ ttv.catatan_eskalasi }}
+            </div>
+            {% endif %}
+            {% else %}
+            <div class="p-4 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-800">
+                Pasien belum menjalani pemeriksaan tanda vital oleh staf klinik.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Clinical Examination Form -->
+    <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-sm">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-teal-800 mb-4 flex items-center gap-1.5">
+            <i class="fa-solid fa-notes-medical"></i> Formulir Pemeriksaan Medis Dokter
+        </h3>
+
+        <form method="POST" class="space-y-5">
+            {% csrf_token %}
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Anamnesis Lanjutan (Riwayat Penyakit Sekarang) <span class="text-red-500 font-bold">*</span>
+                </label>
+                {{ form.anamnesis_lanjutan }}
+                {% if form.anamnesis_lanjutan.errors %}
+                <div class="text-red-600 text-xs mt-1 font-medium">{{ form.anamnesis_lanjutan.errors.0 }}</div>
+                {% endif %}
+                <span class="text-[11px] text-slate-400 mt-1 block">*Disimpan dengan enkripsi Fernet (SR-02).</span>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Riwayat Konsumsi Obat (Opsional)
+                </label>
+                {{ form.riwayat_konsumsi_obat }}
+                {% if form.riwayat_konsumsi_obat.errors %}
+                <div class="text-red-600 text-xs mt-1 font-medium">{{ form.riwayat_konsumsi_obat.errors.0 }}</div>
+                {% endif %}
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Pemeriksaan Fisik (Head to Toe & Status Lokalis) <span class="text-red-500 font-bold">*</span>
+                </label>
+                {{ form.pemeriksaan_fisik }}
+                {% if form.pemeriksaan_fisik.errors %}
+                <div class="text-red-600 text-xs mt-1 font-medium">{{ form.pemeriksaan_fisik.errors.0 }}</div>
+                {% endif %}
+                <span class="text-[11px] text-slate-400 mt-1 block">*Disimpan dengan enkripsi Fernet (SR-02).</span>
+            </div>
+
+            <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+                <a href="{% url 'antrean' %}" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition">
+                    Batal
+                </a>
+                <button type="submit" class="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs shadow-md shadow-teal-600/20 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-check"></i> Simpan Pemeriksaan & Lanjut Diagnosis (L-11)
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

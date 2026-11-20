@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+
+{% block title %}L-06 Antrean Digital{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div>
+            <div class="text-xs font-bold uppercase tracking-wider text-teal-700 mb-1 flex items-center gap-1.5">
+                <i class="fa-solid fa-list-ol"></i> Antrean FIFO Hari Ini • {{ today|date:"l, d F Y" }}
+            </div>
+            <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">L-06 Antrean Digital</h1>
+            <p class="text-xs text-slate-500 mt-1">
+                Urutan antrean digital berdasarkan waktu kedatangan (FIFO). Pembaruan otomatis aktif (setiap 10 detik).
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <span id="refresh-badge" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                Auto-Refresh 10d
+            </span>
+            {% if user.role_akses == 'staf_klinik' %}
+            <a href="{% url 'pasien_verifikasi' %}" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5">
+                <i class="fa-solid fa-plus"></i> Kunjungan Baru
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Status Counter Pills -->
+    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div class="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm text-center">
+            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Menunggu</div>
+            <div class="text-xl font-extrabold text-slate-700 mt-0.5">{{ menunggu_count }}</div>
+        </div>
+        <div class="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm text-center">
+            <div class="text-[10px] font-bold uppercase tracking-wider text-amber-500">Dipanggil</div>
+            <div class="text-xl font-extrabold text-amber-600 mt-0.5">{{ dipanggil_count }}</div>
+        </div>
+        <div class="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm text-center">
+            <div class="text-[10px] font-bold uppercase tracking-wider text-sky-500">Dilayani</div>
+            <div class="text-xl font-extrabold text-sky-600 mt-0.5">{{ dilayani_count }}</div>
+        </div>
+        <div class="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm text-center">
+            <div class="text-[10px] font-bold uppercase tracking-wider text-purple-500">Ditunda</div>
+            <div class="text-xl font-extrabold text-purple-600 mt-0.5">{{ ditunda_count }}</div>
+        </div>
+        <div class="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm text-center">
+            <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-500">Selesai</div>
+            <div class="text-xl font-extrabold text-emerald-600 mt-0.5">{{ selesai_count }}</div>
+        </div>
+    </div>
+
+    <!-- FIFO Queue List -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div class="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+            <div class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                <i class="fa-solid fa-clock-rotate-left text-teal-600"></i> Urutan Pemanggilan (FIFO Waktu Kedatangan)
+            </div>
+            <div class="text-[11px] text-slate-500">
+                *Pasien ditunda tetap mempertahankan posisi antrean aslinya saat dipanggil kembali.
+            </div>
+        </div>
+
+        <div class="divide-y divide-slate-100" id="queue-container">
+            {% for k in antrean_list %}
+            <div class="p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:bg-slate-50/80 transition
+                {% if k.prioritas_abnormal %}border-l-4 border-l-red-500 bg-red-50/10{% endif %}">
+                <!-- Left: Queue Number & Patient Info -->
+                <div class="flex items-start gap-4">
+                    <!-- Nomor Antrean Badge -->
+                    <div class="w-14 h-14 rounded-2xl flex flex-col items-center justify-center font-mono font-extrabold shadow-sm border
+                        {% if k.status_antrian == 'selesai' %}bg-slate-100 text-slate-400 border-slate-200
+                        {% elif k.status_antrian == 'dilayani' %}bg-sky-50 text-sky-700 border-sky-300 ring-2 ring-sky-200
+                        {% elif k.status_antrian == 'dipanggil' %}bg-amber-50 text-amber-700 border-amber-300 ring-2 ring-amber-200
+                        {% elif k.status_antrian == 'ditunda' %}bg-purple-50 text-purple-700 border-purple-300
+                        {% else %}bg-teal-50 text-teal-800 border-teal-200{% endif %}">
+                        <span class="text-[9px] uppercase tracking-wider font-sans font-bold leading-none">Antrean</span>
+                        <span class="text-2xl mt-0.5">#{{ k.nomor_antrian }}</span>
+                    </div>
+
+                    <!-- Info Details -->
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-bold text-base text-slate-900">{{ k.id_pasien.nama }}</span>
+                            <span class="text-xs font-mono font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                                {{ k.id_pasien.nim_id }}
+                            </span>
+                            <span class="text-xs text-slate-500">({{ k.id_pasien.umur }} thn, {{ k.id_pasien.get_jenis_kelamin_display }})</span>
+
+                            <!-- Abnormal Priority Indicator Badge -->
+                            {% if k.prioritas_abnormal %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-red-100 text-red-800 border border-red-300 flex items-center gap-1 animate-pulse">
+                                <i class="fa-solid fa-triangle-exclamation"></i> PRIORITAS TTV ABNORMAL
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <div class="text-xs text-slate-600 flex flex-wrap gap-x-4 gap-y-1">
+                            <div><i class="fa-solid fa-clock text-slate-400 mr-1"></i> Tiba: {{ k.tanggal_waktu|time:"H:i" }} WITA</div>
+                            <div><i class="fa-solid fa-graduation-cap text-slate-400 mr-1"></i> {{ k.id_pasien.fakultas|default:"UNKLAB" }}</div>
+                            <div>
+                                <i class="fa-solid fa-heart-pulse text-slate-400 mr-1"></i>
+                                {% if k.status_pemeriksaan_awal == 'siap_diperiksa' %}
+                                <span class="text-emerald-700 font-semibold">TTV Selesai</span>
+                                {% else %}
+                                <span class="text-amber-700 font-semibold">Belum TTV</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Keluhan preview -->
+                        <div class="text-xs text-slate-500 pt-0.5">
+                            <span class="font-medium text-slate-700">Keluhan:</span> {{ k.keluhan_utama|truncatechars:100 }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Status Badge & Action Buttons -->
+                <div class="flex flex-wrap items-center gap-2 lg:justify-end">
+                    <!-- Status Badge -->
+                    <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider
+                        {% if k.status_antrian == 'menunggu' %}bg-slate-100 text-slate-700 border border-slate-300
+                        {% elif k.status_antrian == 'dipanggil' %}bg-amber-100 text-amber-800 border border-amber-300
+                        {% elif k.status_antrian == 'dilayani' %}bg-sky-100 text-sky-800 border border-sky-300
+                        {% elif k.status_antrian == 'ditunda' %}bg-purple-100 text-purple-800 border border-purple-300
+                        {% elif k.status_antrian == 'selesai' %}bg-emerald-100 text-emerald-800 border border-emerald-300{% endif %}">
+                        {{ k.get_status_antrian_display }}
+                    </span>
+
+                    <!-- Staf Actions: Panggil / Layani / Tunda / Selesai & TTV -->
+                    {% if user.role_akses == 'staf_klinik' %}
+                        <!-- TTV Button -->
+                        <a href="{% url 'ttv_create_or_update' id_kunjungan=k.id_kunjungan %}" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs transition flex items-center gap-1" title="Input/Edit TTV">
+                            <i class="fa-solid fa-heart-pulse text-teal-600"></i> {% if k.status_pemeriksaan_awal == 'siap_diperiksa' %}Edit TTV{% else %}Input TTV{% endif %}
+                        </a>
+
+                        {% if k.status_antrian != 'selesai' %}
+                            {% if k.status_antrian != 'dipanggil' %}
+                            <a href="{% url 'antrean_update_status' id_kunjungan=k.id_kunjungan status_baru='dipanggil' %}" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg text-xs transition shadow-sm" title="Panggil Pasien">
+                                <i class="fa-solid fa-bullhorn mr-1"></i> Panggil
+                            </a>
+                            {% endif %}
+
+                            {% if k.status_antrian != 'dilayani' %}
+                            <a href="{% url 'antrean_update_status' id_kunjungan=k.id_kunjungan status_baru='dilayani' %}" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-lg text-xs transition shadow-sm" title="Layani Pasien">
+                                <i class="fa-solid fa-stethoscope mr-1"></i> Layani
+                            </a>
+                            {% endif %}
+
+                            {% if k.status_antrian != 'ditunda' %}
+                            <a href="{% url 'antrean_update_status' id_kunjungan=k.id_kunjungan status_baru='ditunda' %}" class="px-3 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-700 font-semibold rounded-lg text-xs transition" title="Tunda Pasien">
+                                <i class="fa-solid fa-pause mr-1"></i> Tunda
+                            </a>
+                            {% endif %}
+
+                            <a href="{% url 'antrean_update_status' id_kunjungan=k.id_kunjungan status_baru='selesai' %}" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition shadow-sm" title="Selesaikan">
+                                <i class="fa-solid fa-check mr-1"></i> Selesai
+                            </a>
+                        {% endif %}
+                    {% endif %}
+
+                    <!-- Dokter Actions: Buka Pemeriksaan Medis -->
+                    {% if user.role_akses == 'dokter' %}
+                        {% if k.status_antrian != 'selesai' %}
+                        <a href="{% url 'pemeriksaan_view' id_kunjungan=k.id_kunjungan %}" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs transition shadow-md shadow-teal-600/20 flex items-center gap-1.5">
+                            <i class="fa-solid fa-stethoscope"></i> Periksa Pasien
+                        </a>
+                        {% endif %}
+                        <a href="{% url 'riwayat_medis' id_pasien=k.id_pasien.id_pasien %}" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition flex items-center gap-1" title="Buka Rekam Medis">
+                            <i class="fa-solid fa-book-medical"></i> Rekam Medis
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="p-12 text-center text-slate-400 space-y-3">
+                <i class="fa-solid fa-clipboard-list text-4xl text-slate-300"></i>
+                <h3 class="text-base font-bold text-slate-700">Belum Ada Antrean Hari Ini</h3>
+                <p class="text-xs text-slate-500 max-w-sm mx-auto">
+                    Klinik belum menerima kunjungan pasien baru untuk tanggal {{ today|date:"d M Y" }}.
+                </p>
+                {% if user.role_akses == 'staf_klinik' %}
+                <div class="pt-2">
+                    <a href="{% url 'pasien_verifikasi' %}" class="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs transition shadow-md shadow-teal-600/20 inline-flex items-center gap-1.5">
+                        <i class="fa-solid fa-plus"></i> Buat Kunjungan Pertama
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Auto-refresh polling antrean setiap 10 detik
+    setInterval(() => {
+        fetch("{% url 'antrean_api_today' %}")
+            .then(res => res.json())
+            .then(data => {
+                const badge = document.getElementById('refresh-badge');
+                if (badge) {
+                    badge.classList.add('bg-teal-100', 'text-teal-800');
+                    setTimeout(() => badge.classList.remove('bg-teal-100', 'text-teal-800'), 800);
+                }
+            })
+            .catch(err => console.log('Polling queue status:', err));
+    }, 10000);
+</script>
+{% endblock %}

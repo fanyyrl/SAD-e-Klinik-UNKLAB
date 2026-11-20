@@ -1,0 +1,206 @@
+{% extends 'base.html' %}
+
+{% block title %}L-11 Diagnosis ICD-10{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs font-bold uppercase tracking-wider text-sky-700 mb-1 flex items-center gap-1.5">
+                <i class="fa-solid fa-viruses"></i> Klasifikasi Penyakit Internasional
+            </div>
+            <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">L-11 Diagnosis ICD-10</h1>
+            <p class="text-xs text-slate-500 mt-1">
+                Pencatatan diagnosis primer dan sekunder pasien <strong class="text-slate-800">{{ pemeriksaan.id_kunjungan.id_pasien.nama }}</strong> (Antrean #{{ pemeriksaan.id_kunjungan.nomor_antrian }}).
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{% url 'pemeriksaan_view' id_kunjungan=pemeriksaan.id_kunjungan.pk %}" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition flex items-center gap-1">
+                <i class="fa-solid fa-arrow-left mr-1"></i> Pemeriksaan
+            </a>
+            <a href="{% url 'tindakan_view' id_pemeriksaan=pemeriksaan.pk %}" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5">
+                <span>Lanjut ke Tindakan (L-12)</span> &rarr;
+            </a>
+        </div>
+    </div>
+
+    <!-- Workflow Tabs -->
+    <div class="flex items-center gap-2 overflow-x-auto pb-1 text-xs font-bold">
+        <a href="{% url 'pemeriksaan_view' id_kunjungan=pemeriksaan.id_kunjungan.pk %}" class="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+            <i class="fa-solid fa-stethoscope text-teal-600"></i> L-10 Pemeriksaan
+        </a>
+        <a href="{% url 'diagnosis_view' id_pemeriksaan=pemeriksaan.id_pemeriksaan %}" class="px-4 py-2.5 rounded-xl bg-teal-600 text-white shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+            <i class="fa-solid fa-viruses"></i> L-11 Diagnosis ICD-10
+        </a>
+        <a href="{% url 'tindakan_view' id_pemeriksaan=pemeriksaan.id_pemeriksaan %}" class="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+            <i class="fa-solid fa-syringe text-purple-600"></i> L-12 Tindakan Medis
+        </a>
+        <a href="{% url 'resep_view' id_pemeriksaan=pemeriksaan.id_pemeriksaan %}" class="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+            <i class="fa-solid fa-pills text-amber-500"></i> L-13 Resep Digital
+        </a>
+        <a href="{% url 'hasil_lab_view' id_kunjungan=pemeriksaan.id_kunjungan.pk %}" class="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+            <i class="fa-solid fa-flask text-teal-600"></i> L-14 Hasil Lab
+        </a>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Form Tambah Diagnosis ICD-10 -->
+        <div class="lg:col-span-2 bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-sm space-y-5">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <i class="fa-solid fa-magnifying-glass text-teal-600"></i> Cari & Tambah Diagnosis ICD-10
+            </h2>
+
+            <form method="POST" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="tambah_diagnosis" value="1">
+
+                <!-- Autocomplete input -->
+                <div class="relative">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                        Kode ICD-10 atau Nama Penyakit <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <i class="fa-solid fa-search absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+                        <input type="text" id="icd-search-input" name="kode_icd10" required autocomplete="off"
+                               placeholder="Ketik kode (mis. J00, A09) atau nama penyakit (mis. nasopharyngitis, gastritis)..."
+                               class="w-full pl-9 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition">
+                    </div>
+                    <!-- Autocomplete Dropdown list -->
+                    <div id="icd-results-dropdown" class="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto hidden text-xs divide-y divide-slate-100">
+                    </div>
+                    <span class="text-[11px] text-slate-400 mt-1 block">
+                        Pilih kode dari hasil pencarian otomatis yang muncul.
+                    </span>
+                </div>
+
+                <!-- Jenis Diagnosis -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                        Jenis Diagnosis <span class="text-red-500">*</span>
+                    </label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-teal-50/50 transition">
+                            <input type="radio" name="jenis_diagnosis" value="primer" checked class="text-teal-600 focus:ring-teal-500">
+                            <div>
+                                <span class="font-bold text-xs text-slate-800 block">Diagnosis Primer</span>
+                                <span class="text-[10px] text-slate-500">Penyebab utama kedatangan (Maks 1)</span>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-teal-50/50 transition">
+                            <input type="radio" name="jenis_diagnosis" value="sekunder" class="text-teal-600 focus:ring-teal-500">
+                            <div>
+                                <span class="font-bold text-xs text-slate-800 block">Diagnosis Sekunder</span>
+                                <span class="text-[10px] text-slate-500">Penyakit penyerta / komorbiditas</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex justify-end">
+                    <button type="submit" class="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs shadow-md shadow-teal-600/20 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-plus"></i> Tambahkan Diagnosis
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Daftar Diagnosis yang Tercatat -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Diagnosis Pemeriksaan Ini
+                </h3>
+                <span class="text-[10px] font-bold font-mono text-slate-500">{{ diagnosa_list|length }} Item</span>
+            </div>
+
+            {% if diagnosa_list %}
+            <div class="space-y-2.5">
+                {% for dg in diagnosa_list %}
+                <div class="p-3 rounded-xl border text-xs flex items-start justify-between gap-2
+                    {% if dg.jenis_diagnosis == 'primer' %}bg-sky-50 border-sky-300 text-sky-900{% else %}bg-slate-50 border-slate-200 text-slate-800{% endif %}">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded font-mono font-bold text-[10px]
+                                {% if dg.jenis_diagnosis == 'primer' %}bg-sky-200 text-sky-900{% else %}bg-slate-200 text-slate-700{% endif %}">
+                                {{ dg.jenis_diagnosis|upper }}
+                            </span>
+                            <span class="font-mono font-extrabold text-sm">{{ dg.kode_icd10.kode_icd10 }}</span>
+                        </div>
+                        <p class="font-medium mt-1 leading-snug">{{ dg.kode_icd10.deskripsi }}</p>
+                    </div>
+                    <a href="{% url 'diagnosis_delete' id_diagnosis=dg.id_diagnosis %}" onclick="return confirm('Hapus diagnosis ini?')" class="text-slate-400 hover:text-red-600 p-1" title="Hapus Diagnosis">
+                        <i class="fa-solid fa-trash-can text-sm"></i>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="py-8 text-center text-slate-400 text-xs">
+                <i class="fa-solid fa-viruses text-3xl mb-2 text-slate-300"></i>
+                <p>Belum ada diagnosis yang ditambahkan.</p>
+            </div>
+            {% endif %}
+
+            <div class="pt-4 border-t border-slate-100">
+                <a href="{% url 'tindakan_view' id_pemeriksaan=pemeriksaan.pk %}" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm">
+                    <span>Lanjut ke Tindakan (L-12)</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const searchInput = document.getElementById('icd-search-input');
+    const dropdown = document.getElementById('icd-results-dropdown');
+    let timer = null;
+
+    searchInput.addEventListener('input', () => {
+        clearTimeout(timer);
+        const query = searchInput.value.trim();
+        if (query.length < 2) {
+            dropdown.classList.add('hidden');
+            dropdown.innerHTML = '';
+            return;
+        }
+
+        timer = setTimeout(() => {
+            fetch(`{% url 'icd10_search_api' %}?q=${encodeURIComponent(query)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.results && data.results.length > 0) {
+                        dropdown.innerHTML = data.results.map(item => `
+                            <div class="p-3 hover:bg-teal-50 cursor-pointer transition flex items-center justify-between" onclick="selectIcd('${item.kode}', '${item.deskripsi.replace(/'/g, "\\'")}')">
+                                <div>
+                                    <span class="font-mono font-bold text-teal-700">${item.kode}</span>
+                                    <span class="text-slate-700 ml-2 font-medium">${item.deskripsi}</span>
+                                </div>
+                                <i class="fa-solid fa-chevron-right text-slate-300 text-[10px]"></i>
+                            </div>
+                        `).join('');
+                        dropdown.classList.remove('hidden');
+                    } else {
+                        dropdown.innerHTML = '<div class="p-3 text-slate-400 text-center italic">Kode tidak ditemukan</div>';
+                        dropdown.classList.remove('hidden');
+                    }
+                });
+        }, 250);
+    });
+
+    function selectIcd(kode, deskripsi) {
+        searchInput.value = kode;
+        dropdown.classList.add('hidden');
+        dropdown.innerHTML = '';
+    }
+
+    document.addEventListener('click', (e) => {
+        if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+</script>
+{% endblock %}

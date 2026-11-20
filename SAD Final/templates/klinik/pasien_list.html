@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+
+{% block title %}L-03 Data Pasien{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div>
+            <div class="text-xs font-bold uppercase tracking-wider text-teal-700 mb-1">
+                <i class="fa-solid fa-users mr-1"></i> Master Pasien UNKLAB
+            </div>
+            <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">L-03 Data Pasien</h1>
+            <p class="text-xs text-slate-500 mt-1">Daftar seluruh mahasiswa, dosen, dan staf yang terdaftar di klinik kampus (Total: {{ total_pasien }} pasien).</p>
+        </div>
+        <div class="flex items-center gap-2">
+            {% if user.role_akses == 'staf_klinik' %}
+            <a href="{% url 'pasien_create' %}" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5">
+                <i class="fa-solid fa-user-plus"></i> Tambah Pasien Baru
+            </a>
+            <a href="{% url 'pasien_verifikasi' %}" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-1.5">
+                <i class="fa-solid fa-id-card"></i> Verifikasi ID
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Filter & Search Box -->
+    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+        <form method="GET" class="flex flex-col sm:flex-row gap-2">
+            <div class="relative flex-1">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+                <input type="text" name="q" value="{{ q }}" placeholder="Cari berdasarkan NIM, Nama, atau Fakultas..."
+                       class="w-full pl-10 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition">
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-search"></i> Cari
+                </button>
+                {% if q %}
+                <a href="{% url 'pasien_list' %}" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-xl transition flex items-center gap-1">
+                    <i class="fa-solid fa-xmark"></i> Reset
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="text-[11px] uppercase tracking-wider text-slate-500 bg-slate-50 border-b border-slate-200">
+                    <tr>
+                        <th class="py-3 px-4">NIM / ID Pasien</th>
+                        <th class="py-3 px-4">Nama Lengkap</th>
+                        <th class="py-3 px-4">Tanggal Lahir / Umur</th>
+                        <th class="py-3 px-4 text-center">Jenis Kelamin</th>
+                        <th class="py-3 px-4">Fakultas / Unit</th>
+                        <th class="py-3 px-4 text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for p in page_obj %}
+                    <tr class="hover:bg-slate-50/80 transition-colors">
+                        <td class="py-3.5 px-4 font-mono font-bold text-teal-700">
+                            {{ p.nim_id }}
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <div class="font-bold text-slate-800 text-sm">{{ p.nama }}</div>
+                            <div class="text-[11px] text-slate-400 truncate max-w-xs">{{ p.alamat|default:"-" }}</div>
+                        </td>
+                        <td class="py-3.5 px-4 text-slate-600">
+                            <div>{{ p.tanggal_lahir|date:"d M Y" }}</div>
+                            <div class="text-[11px] text-slate-400">{{ p.umur }} tahun</div>
+                        </td>
+                        <td class="py-3.5 px-4 text-center">
+                            {% if p.jenis_kelamin == 'L' %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
+                                <i class="fa-solid fa-mars mr-0.5"></i> Laki-laki
+                            </span>
+                            {% else %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-pink-100 text-pink-800">
+                                <i class="fa-solid fa-venus mr-0.5"></i> Perempuan
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3.5 px-4 text-slate-600 font-medium">
+                            {{ p.fakultas|default:"-" }}
+                        </td>
+                        <td class="py-3.5 px-4 text-center">
+                            <div class="flex items-center justify-center gap-1.5">
+                                {% if user.role_akses == 'dokter' %}
+                                <a href="{% url 'riwayat_medis' id_pasien=p.id_pasien %}" class="px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold rounded-lg text-xs transition flex items-center gap-1" title="Lihat Rekam Medis">
+                                    <i class="fa-solid fa-notes-medical"></i> Rekam Medis
+                                </a>
+                                {% else %}
+                                <a href="{% url 'pasien_verifikasi_detail' id_pasien=p.id_pasien %}" class="px-2.5 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold rounded-lg text-xs transition flex items-center gap-1" title="Verifikasi & Buat Kunjungan">
+                                    <i class="fa-solid fa-id-card-clip"></i> Kunjungan
+                                </a>
+                                <a href="{% url 'pasien_update' id_pasien=p.id_pasien %}" class="p-1.5 text-slate-500 hover:text-teal-600 hover:bg-slate-100 rounded-lg transition" title="Ubah Data">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </a>
+                                <a href="{% url 'pasien_delete' id_pasien=p.id_pasien %}" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Hapus Pasien">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="py-12 text-center text-slate-400">
+                            <i class="fa-solid fa-user-slash text-3xl mb-2 text-slate-300"></i>
+                            <p class="font-medium">Tidak ada data pasien yang cocok.</p>
+                            {% if user.role_akses == 'staf_klinik' %}
+                            <div class="mt-3">
+                                <a href="{% url 'pasien_create' %}{% if q %}?nim={{ q }}{% endif %}" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition inline-flex items-center gap-1.5">
+                                    <i class="fa-solid fa-user-plus"></i> Daftarkan Pasien Baru
+                                </a>
+                            </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600">
+            <div>
+                Halaman {{ page_obj.number }} dari {{ page_obj.paginator.num_pages }}
+            </div>
+            <div class="flex gap-1">
+                {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}" class="px-3 py-1 bg-white border border-slate-200 rounded hover:bg-slate-100">
+                    &laquo; Sebelumnya
+                </a>
+                {% endif %}
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}" class="px-3 py-1 bg-white border border-slate-200 rounded hover:bg-slate-100">
+                    Berikutnya &raquo;
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

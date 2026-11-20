@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% block title %}L-04 Pencarian dan Verifikasi Identitas{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div class="text-xs font-bold uppercase tracking-wider text-teal-700 mb-1">
+            <i class="fa-solid fa-id-card-clip mr-1"></i> Prosedur Identifikasi Pasien
+        </div>
+        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">L-04 Pencarian dan Verifikasi Identitas</h1>
+        <p class="text-xs text-slate-500 mt-1">
+            Verifikasi identitas mahasiswa atau civitas akademika UNKLAB lewat ID Card/NIM/Nama sebelum membuat kunjungan klinik baru.
+        </p>
+    </div>
+
+    <!-- Search Form -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+        <form method="GET" class="space-y-3">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                Pencarian Berdasarkan NIM / ID Card / Nama Pasien
+            </label>
+            <div class="flex flex-col sm:flex-row gap-2">
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-id-card absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+                    <input type="text" name="q" value="{{ q }}" autofocus
+                           placeholder="Ketikkan NIM (mis. 105012410033) atau nama pasien..."
+                           class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition">
+                </div>
+                <button type="submit" class="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition shadow-md shadow-teal-600/20 flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-magnifying-glass"></i> Cari Identitas Pasien
+                </button>
+            </div>
+            <p class="text-[11px] text-slate-400">
+                *BR-02: Jika pasien lupa membawa ID Card fisik, staf dapat mencari lewat NIM atau nama lengkap.
+            </p>
+        </form>
+    </div>
+
+    <!-- Search Results -->
+    {% if sudah_mencari %}
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div class="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-700">
+                Hasil Pencarian: <span class="text-teal-700">"{{ q }}"</span> ({{ hasil_pencarian|length }} ditemukan)
+            </h2>
+            <a href="{% url 'pasien_create' %}?nim={{ q }}" class="text-xs font-bold text-teal-600 hover:text-teal-800 flex items-center gap-1">
+                <i class="fa-solid fa-user-plus"></i> Pasien Tidak Ada? Daftarkan Baru
+            </a>
+        </div>
+
+        {% if hasil_pencarian %}
+        <div class="divide-y divide-slate-100">
+            {% for p in hasil_pencarian %}
+            <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/80 transition">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-teal-50 text-teal-800 border border-teal-200">
+                            {{ p.nim_id }}
+                        </span>
+                        <h3 class="text-base font-bold text-slate-900">{{ p.nama }}</h3>
+                        <span class="text-xs text-slate-500">({{ p.umur }} thn, {% if p.jenis_kelamin == 'L' %}Laki-laki{% else %}Perempuan{% endif %})</span>
+                    </div>
+
+                    <div class="text-xs text-slate-600 flex flex-wrap gap-x-4 gap-y-1 pt-1">
+                        <div><i class="fa-solid fa-graduation-cap text-slate-400 mr-1"></i> {{ p.fakultas|default:"Fakultas / Unit belum diset" }}</div>
+                        <div><i class="fa-solid fa-calendar text-slate-400 mr-1"></i> Lahir: {{ p.tanggal_lahir|date:"d M Y" }}</div>
+                        <div><i class="fa-solid fa-location-dot text-slate-400 mr-1"></i> {{ p.alamat|default:"-" }}</div>
+                    </div>
+
+                    <!-- Alergi Indicator -->
+                    {% if p.alergi.all %}
+                    <div class="pt-2 flex items-center gap-1.5 flex-wrap">
+                        <span class="text-[10px] font-bold text-red-700 uppercase"><i class="fa-solid fa-triangle-exclamation mr-0.5"></i> Riwayat Alergi:</span>
+                        {% for al in p.alergi.all %}
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 border border-red-200">
+                            {{ al.nama_alergen }} ({{ al.jenis_alergi }})
+                        </span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <a href="{% url 'pasien_verifikasi_detail' id_pasien=p.id_pasien %}" class="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-id-card-clip"></i> Verifikasi & Buat Kunjungan
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- Empty State with offer to create -->
+        <div class="p-12 text-center space-y-4">
+            <div class="w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto text-2xl">
+                <i class="fa-solid fa-user-xmark"></i>
+            </div>
+            <div>
+                <h3 class="text-base font-bold text-slate-800">Pasien Tidak Ditemukan</h3>
+                <p class="text-xs text-slate-500 max-w-sm mx-auto mt-1">
+                    Tidak ditemukan data pasien dengan kata kunci "{{ q }}". Silakan periksa kembali ejaan atau daftarkan sebagai pasien baru.
+                </p>
+            </div>
+            <div class="pt-2">
+                <a href="{% url 'pasien_create' %}?nim={{ q }}" class="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition shadow-md shadow-teal-600/20 inline-flex items-center gap-1.5">
+                    <i class="fa-solid fa-user-plus"></i> Daftarkan Pasien Baru
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

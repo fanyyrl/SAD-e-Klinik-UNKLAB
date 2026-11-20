@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block title %}L-08 Inventaris Obat{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div>
+            <div class="text-xs font-bold uppercase tracking-wider text-teal-700 mb-1">
+                <i class="fa-solid fa-pills mr-1"></i> Logistik Farmasi Klinik
+            </div>
+            <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">L-08 Inventaris Obat</h1>
+            <p class="text-xs text-slate-500 mt-1">
+                Pengelolaan ketersediaan obat, batas minimum, kelompok zat aktif, dan riwayat mutasi stok fisik.
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{% url 'obat_create' %}" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5">
+                <i class="fa-solid fa-plus"></i> Tambah Obat Baru
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter & Search Box -->
+    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+        <form method="GET" class="flex-1 w-full flex flex-col sm:flex-row gap-2">
+            <div class="relative flex-1">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+                <input type="text" name="q" value="{{ q }}" placeholder="Cari nama obat, kode, zat aktif, atau kelompok..."
+                       class="w-full pl-10 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition">
+            </div>
+
+            <select name="status" class="px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500">
+                <option value="semua" {% if status_filter == 'semua' %}selected{% endif %}>Semua Status</option>
+                <option value="kritis" {% if status_filter == 'kritis' %}selected{% endif %}>⚠️ Stok Kritis (≤ Min)</option>
+                <option value="aktif" {% if status_filter == 'aktif' %}selected{% endif %}>Aktif</option>
+                <option value="nonaktif" {% if status_filter == 'nonaktif' %}selected{% endif %}>Nonaktif (Arsip)</option>
+            </select>
+
+            <button type="submit" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-search"></i> Filter
+            </button>
+            {% if q or status_filter != 'semua' %}
+            <a href="{% url 'obat_list' %}" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-xl transition flex items-center justify-center gap-1">
+                <i class="fa-solid fa-xmark"></i> Reset
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="text-[11px] uppercase tracking-wider text-slate-500 bg-slate-50 border-b border-slate-200">
+                    <tr>
+                        <th class="py-3 px-4">Kode & Nama Obat</th>
+                        <th class="py-3 px-4">Zat Aktif / Kelompok</th>
+                        <th class="py-3 px-4 text-center">Sisa Stok</th>
+                        <th class="py-3 px-4 text-center">Stok Min</th>
+                        <th class="py-3 px-4 text-center">Status</th>
+                        <th class="py-3 px-4 text-center">Aksi Mutasi & Edit</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for o in page_obj %}
+                    <tr class="hover:bg-slate-50/80 transition-colors {% if not o.status_aktif %}bg-slate-50/60 opacity-70{% endif %}">
+                        <td class="py-3.5 px-4">
+                            <div class="font-bold text-slate-900 text-sm">{{ o.nama_obat }}</div>
+                            <div class="font-mono text-teal-700 font-semibold text-[11px]">{{ o.kode_obat }} • Satuan: {{ o.satuan }}</div>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <div class="text-slate-800 font-medium">{{ o.zat_aktif|default:"-" }}</div>
+                            <div class="text-[11px] text-slate-400 font-mono">{{ o.kelompok_obat|default:"-" }}</div>
+                        </td>
+                        <td class="py-3.5 px-4 text-center">
+                            <span class="font-extrabold text-sm {% if o.stok_tersedia == 0 %}text-red-600{% elif o.stok_tersedia <= o.stok_minimum %}text-amber-600{% else %}text-emerald-700{% endif %}">
+                                {{ o.stok_tersedia }}
+                            </span>
+                            <span class="text-[10px] text-slate-400 block">{{ o.satuan }}</span>
+                        </td>
+                        <td class="py-3.5 px-4 text-center text-slate-600">
+                            {{ o.stok_minimum }}
+                        </td>
+                        <td class="py-3.5 px-4 text-center">
+                            {% if not o.status_aktif %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-600">
+                                Nonaktif
+                            </span>
+                            {% elif o.stok_tersedia == 0 %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-red-100 text-red-800 border border-red-200">
+                                Habis
+                            </span>
+                            {% elif o.stok_tersedia <= o.stok_minimum %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200">
+                                Kritis (≤ Min)
+                            </span>
+                            {% else %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                Tersedia
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3.5 px-4 text-center">
+                            <div class="flex items-center justify-center gap-1.5">
+                                <a href="{% url 'obat_mutasi' kode_obat=o.kode_obat %}" class="px-2.5 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold rounded-lg text-xs transition flex items-center gap-1" title="Mutasi Stok">
+                                    <i class="fa-solid fa-right-left"></i> Mutasi
+                                </a>
+                                <a href="{% url 'obat_update' kode_obat=o.kode_obat %}" class="p-1.5 text-slate-500 hover:text-teal-600 hover:bg-slate-100 rounded-lg transition" title="Ubah Info Obat">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </a>
+                                <a href="{% url 'obat_delete' kode_obat=o.kode_obat %}" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Hapus / Nonaktifkan">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="py-12 text-center text-slate-400">
+                            <i class="fa-solid fa-box-open text-3xl mb-2 text-slate-300"></i>
+                            <p class="font-medium">Tidak ada data obat yang sesuai kriteria.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if page_obj.has_other_pages %}
+        <div class="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600">
+            <div>Halaman {{ page_obj.number }} dari {{ page_obj.paginator.num_pages }}</div>
+            <div class="flex gap-1">
+                {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" class="px-3 py-1 bg-white border border-slate-200 rounded hover:bg-slate-100">
+                    &laquo; Sebelumnya
+                </a>
+                {% endif %}
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" class="px-3 py-1 bg-white border border-slate-200 rounded hover:bg-slate-100">
+                    Berikutnya &raquo;
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
